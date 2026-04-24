@@ -47,6 +47,7 @@ use codex_exec::CollabToolCallStatus;
 use codex_exec::CollectedThreadEvents;
 use codex_exec::CommandExecutionItem;
 use codex_exec::CommandExecutionStatus;
+use codex_exec::ContextCompactionItem;
 use codex_exec::ErrorItem;
 use codex_exec::EventProcessorWithJsonOutput;
 use codex_exec::ExecThreadItem;
@@ -1236,6 +1237,79 @@ fn token_usage_update_is_emitted_on_turn_completion() {
                 },
             })],
             status: CodexStatus::InitiateShutdown,
+        }
+    );
+}
+
+#[test]
+fn context_compaction_item_is_emitted_for_item_notifications() {
+    let mut processor = EventProcessorWithJsonOutput::new(/*last_message_path*/ None);
+
+    let started =
+        processor.collect_thread_events(ServerNotification::ItemStarted(ItemStartedNotification {
+            item: ThreadItem::ContextCompaction {
+                id: "compact-1".to_string(),
+            },
+            thread_id: "thread-1".to_string(),
+            turn_id: "turn-1".to_string(),
+        }));
+    assert_eq!(
+        started,
+        CollectedThreadEvents {
+            events: vec![ThreadEvent::ItemStarted(ItemStartedEvent {
+                item: ExecThreadItem {
+                    id: "item_0".to_string(),
+                    details: ThreadItemDetails::ContextCompaction(ContextCompactionItem {}),
+                },
+            })],
+            status: CodexStatus::Running,
+        }
+    );
+
+    let completed = processor.collect_thread_events(ServerNotification::ItemCompleted(
+        ItemCompletedNotification {
+            item: ThreadItem::ContextCompaction {
+                id: "compact-1".to_string(),
+            },
+            thread_id: "thread-1".to_string(),
+            turn_id: "turn-1".to_string(),
+        },
+    ));
+    assert_eq!(
+        completed,
+        CollectedThreadEvents {
+            events: vec![ThreadEvent::ItemCompleted(ItemCompletedEvent {
+                item: ExecThreadItem {
+                    id: "item_0".to_string(),
+                    details: ThreadItemDetails::ContextCompaction(ContextCompactionItem {}),
+                },
+            })],
+            status: CodexStatus::Running,
+        }
+    );
+}
+
+#[test]
+fn context_compaction_legacy_notification_is_emitted_as_completed_item() {
+    let mut processor = EventProcessorWithJsonOutput::new(/*last_message_path*/ None);
+
+    let collected = processor.collect_thread_events(ServerNotification::ContextCompacted(
+        codex_app_server_protocol::ContextCompactedNotification {
+            thread_id: "thread-1".to_string(),
+            turn_id: "turn-1".to_string(),
+        },
+    ));
+
+    assert_eq!(
+        collected,
+        CollectedThreadEvents {
+            events: vec![ThreadEvent::ItemCompleted(ItemCompletedEvent {
+                item: ExecThreadItem {
+                    id: "item_0".to_string(),
+                    details: ThreadItemDetails::ContextCompaction(ContextCompactionItem {}),
+                },
+            })],
+            status: CodexStatus::Running,
         }
     );
 }

@@ -69,6 +69,10 @@ pub struct Usage {
     pub reasoning_output_tokens: i64,
 }
 
+/// Marks a context compaction step in the thread history.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS, Default)]
+pub struct ContextCompactionItem {}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, TS)]
 pub struct ItemStartedEvent {
     pub item: ThreadItem,
@@ -122,6 +126,8 @@ pub enum ThreadItemDetails {
     /// Captures a web search request. It starts when the search is kicked off
     /// and completes when results are returned to the agent.
     WebSearch(WebSearchItem),
+    /// Marks a context compaction step in the thread history.
+    ContextCompaction(ContextCompactionItem),
     /// Tracks the agent's running to-do list. It starts when the plan is first
     /// issued, updates as steps change state, and completes when the turn ends.
     TodoList(TodoListItem),

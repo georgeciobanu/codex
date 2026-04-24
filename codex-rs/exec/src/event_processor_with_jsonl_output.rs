@@ -29,6 +29,7 @@ use crate::exec_events::CollabToolCallItem;
 use crate::exec_events::CollabToolCallStatus;
 use crate::exec_events::CommandExecutionItem;
 use crate::exec_events::CommandExecutionStatus as ExecCommandExecutionStatus;
+use crate::exec_events::ContextCompactionItem;
 use crate::exec_events::ErrorItem;
 use crate::exec_events::FileChangeItem;
 use crate::exec_events::FileUpdateChange;
@@ -310,6 +311,10 @@ impl EventProcessorWithJsonOutput {
                     },
                 }),
             }),
+            ThreadItem::ContextCompaction { .. } => Some(ExecThreadItem {
+                id: make_id(),
+                details: ThreadItemDetails::ContextCompaction(ContextCompactionItem {}),
+            }),
             _ => None,
         }
     }
@@ -491,6 +496,15 @@ impl EventProcessorWithJsonOutput {
                 CodexStatus::Running
             }
             ServerNotification::ModelVerification(_) => CodexStatus::Running,
+            ServerNotification::ContextCompacted(_) => {
+                events.push(ThreadEvent::ItemCompleted(ItemCompletedEvent {
+                    item: ExecThreadItem {
+                        id: self.next_item_id(),
+                        details: ThreadItemDetails::ContextCompaction(ContextCompactionItem {}),
+                    },
+                }));
+                CodexStatus::Running
+            }
             ServerNotification::ThreadTokenUsageUpdated(notification) => {
                 self.last_total_token_usage = Some(notification.token_usage);
                 CodexStatus::Running
